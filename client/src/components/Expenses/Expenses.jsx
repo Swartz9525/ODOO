@@ -64,10 +64,32 @@ function Expenses() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Client-side validation
+    if (
+      !formData.amount ||
+      !formData.currency ||
+      !formData.category ||
+      !formData.expenseDate
+    ) {
+      alert(
+        "Please fill in all required fields: amount, currency, category, and expense date."
+      );
+      return;
+    }
+
+    if (parseFloat(formData.amount) <= 0) {
+      alert("Amount must be greater than 0.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await axios.post("http://localhost:5000/api/expenses", formData);
+      await axios.post("http://localhost:5000/api/expenses", {
+        ...formData,
+        amount: parseFloat(formData.amount), // Ensure amount is a number
+      });
       setOpenDialog(false);
       setFormData({
         amount: "",
@@ -79,6 +101,17 @@ function Expenses() {
       fetchExpenses();
     } catch (error) {
       console.error("Error creating expense:", error);
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
+        alert(`Error: ${error.response.data.message}`);
+      } else {
+        alert(
+          "An error occurred while submitting the expense. Please try again."
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -221,7 +254,6 @@ function Expenses() {
             </TextField>
             <TextField
               margin="normal"
-              required
               fullWidth
               label="Description"
               name="description"

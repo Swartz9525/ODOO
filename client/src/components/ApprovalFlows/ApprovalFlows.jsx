@@ -165,7 +165,7 @@ function ApprovalFlows() {
         );
       } else {
         await axios.post(
-          "http://localhost:5000/api/approval/approval-flows",
+          "http://localhost:5000/api/company/approval-flows",
           flowFormData,
           config
         );

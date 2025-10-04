@@ -1,4 +1,4 @@
-import Company from './company.js';
+import Company from './Company.js';
 import User from './User.js';
 // import Company from './Company.js';
 

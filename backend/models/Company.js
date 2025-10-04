@@ -10,6 +10,7 @@ const Company = sequelize.define('Company', {
   name: {
     type: DataTypes.STRING,
     allowNull: false,
+    unique: true,
   },
   country: {
     type: DataTypes.STRING,
@@ -17,7 +18,7 @@ const Company = sequelize.define('Company', {
     allowNull: false,
   },
   currency: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(3),
     defaultValue: 'USD',
     allowNull: false,
   },

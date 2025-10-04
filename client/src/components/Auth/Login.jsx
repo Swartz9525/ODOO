@@ -33,18 +33,29 @@ function Login() {
     email: "",
     password: "",
     name: "",
+    companyName: "", // Added this - required by backend
     country: "US",
     currency: "USD",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const { login, signup } = useAuth();
+  // Changed 'signup' to 'register' to match AuthContext export
+  const { login, register } = useAuth();
   const navigate = useNavigate();
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
     setError("");
+    // Clear form when switching tabs
+    setFormData({
+      email: "",
+      password: "",
+      name: "",
+      companyName: "",
+      country: "US",
+      currency: "USD",
+    });
   };
 
   const handleChange = (e) => {
@@ -59,20 +70,47 @@ function Login() {
     setLoading(true);
     setError("");
 
+    console.log("Form submitted:", {
+      tabValue,
+      email: formData.email,
+      hasPassword: !!formData.password,
+    });
+
     try {
       let result;
       if (tabValue === 0) {
+        // Login
+        console.log("Attempting login...");
         result = await login(formData.email, formData.password);
       } else {
-        result = await signup(formData);
+        // Sign up - validate required fields
+        if (!formData.name || !formData.companyName) {
+          setError("Name and Company Name are required");
+          setLoading(false);
+          return;
+        }
+
+        console.log("Attempting registration...");
+        result = await register({
+          email: formData.email,
+          password: formData.password,
+          name: formData.name,
+          companyName: formData.companyName,
+          country: formData.country,
+          currency: formData.currency,
+        });
       }
 
+      console.log("Auth result:", result);
+
       if (result.success) {
+        console.log("Success! Navigating to dashboard...");
         navigate("/dashboard");
       } else {
-        setError(result.message);
+        setError(result.message || "Authentication failed");
       }
     } catch (err) {
+      console.error("Auth error:", err);
       setError("An error occurred. Please try again.");
     } finally {
       setLoading(false);
@@ -114,6 +152,7 @@ function Login() {
                 label="Email Address"
                 name="email"
                 type="email"
+                autoComplete="email"
                 value={formData.email}
                 onChange={handleChange}
               />
@@ -124,6 +163,7 @@ function Login() {
                 label="Password"
                 name="password"
                 type="password"
+                autoComplete="current-password"
                 value={formData.password}
                 onChange={handleChange}
               />
@@ -136,7 +176,18 @@ function Login() {
                 fullWidth
                 label="Full Name"
                 name="name"
+                autoComplete="name"
                 value={formData.name}
+                onChange={handleChange}
+              />
+              <TextField
+                margin="normal"
+                required
+                fullWidth
+                label="Company Name"
+                name="companyName"
+                autoComplete="organization"
+                value={formData.companyName}
                 onChange={handleChange}
               />
               <TextField
@@ -146,6 +197,7 @@ function Login() {
                 label="Email Address"
                 name="email"
                 type="email"
+                autoComplete="email"
                 value={formData.email}
                 onChange={handleChange}
               />
@@ -156,6 +208,7 @@ function Login() {
                 label="Password"
                 name="password"
                 type="password"
+                autoComplete="new-password"
                 value={formData.password}
                 onChange={handleChange}
               />
@@ -184,7 +237,11 @@ function Login() {
               sx={{ mt: 3, mb: 2 }}
               disabled={loading}
             >
-              {tabValue === 0 ? "Sign In" : "Sign Up"}
+              {loading
+                ? "Processing..."
+                : tabValue === 0
+                ? "Sign In"
+                : "Sign Up"}
             </Button>
           </form>
         </Paper>

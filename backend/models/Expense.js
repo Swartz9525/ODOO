@@ -8,20 +8,32 @@ const Expense = sequelize.define('Expense', {
     primaryKey: true,
   },
   amount: {
-    type: DataTypes.DECIMAL(10, 2),
+    type: DataTypes.DECIMAL(15, 2),
     allowNull: false,
+    validate: {
+      min: 0.01,
+    },
   },
   currency: {
     type: DataTypes.STRING(3),
     allowNull: false,
+    validate: {
+      len: [3, 3],
+    },
   },
   convertedAmount: {
-    type: DataTypes.DECIMAL(10, 2),
+    type: DataTypes.DECIMAL(15, 2),
     allowNull: false,
+    validate: {
+      min: 0,
+    },
   },
   category: {
     type: DataTypes.STRING,
     allowNull: false,
+    validate: {
+      notEmpty: true,
+    },
   },
   description: {
     type: DataTypes.TEXT,
@@ -35,35 +47,46 @@ const Expense = sequelize.define('Expense', {
     type: DataTypes.DATE,
     allowNull: false,
   },
-  // Foreign keys
   employeeId: {
     type: DataTypes.UUID,
     allowNull: false,
     references: {
-      model: 'Users',
+      model: 'users', // Changed to lowercase to match User model tableName
       key: 'id',
     },
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
   },
   companyId: {
     type: DataTypes.UUID,
     allowNull: false,
     references: {
-      model: 'Companies',
+      model: 'Companies', // Keep this as is - check your Company model
       key: 'id',
     },
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
   },
   currentApproverId: {
     type: DataTypes.UUID,
+    allowNull: true,
     references: {
-      model: 'Users',
+      model: 'users', // Changed to lowercase to match User model tableName
       key: 'id',
     },
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
   },
   approvalStep: {
     type: DataTypes.INTEGER,
     defaultValue: 0,
+    validate: {
+      min: 0,
+    },
   },
 }, {
+  timestamps: true,
+  tableName: 'Expenses',
   indexes: [
     {
       fields: ['employeeId'],
@@ -74,14 +97,13 @@ const Expense = sequelize.define('Expense', {
     {
       fields: ['currentApproverId'],
     },
+    {
+      fields: ['status'],
+    },
+    {
+      fields: ['expenseDate'],
+    },
   ],
 });
-
-Expense.associate = function (models) {
-  Expense.belongsTo(models.User, { foreignKey: 'employeeId', as: 'Employee' });
-  Expense.belongsTo(models.Company, { foreignKey: 'companyId', as: 'Company' });
-  Expense.hasMany(models.ApprovalHistory, { foreignKey: 'expenseId', as: 'ApprovalHistories' });
-  Expense.belongsTo(models.User, { foreignKey: 'currentApproverId', as: 'CurrentApprover' });
-};
 
 export default Expense;

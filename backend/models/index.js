@@ -8,83 +8,116 @@ import ApprovalHistory from './ApprovalHistory.js';
 
 // Define associations
 const setupAssociations = () => {
-  // User and Company
-  User.belongsTo(Company, { foreignKey: 'companyId', as: 'company' });
-  Company.hasMany(User, { foreignKey: 'companyId', as: 'users' });
+  try {
+    console.log('Setting up database associations...');
 
-  // User and Expense
-  User.hasMany(Expense, { foreignKey: 'employeeId', as: 'expenses' });
-  Expense.belongsTo(User, { foreignKey: 'employeeId', as: 'employee' });
+    // User and Company
+    User.belongsTo(Company, {
+      foreignKey: 'companyId',
+      as: 'userCompany',
+      onDelete: 'CASCADE'
+    });
+    Company.hasMany(User, {
+      foreignKey: 'companyId',
+      as: 'companyUsers',
+      onDelete: 'CASCADE'
+    });
 
-  // Expense and Company
-  Expense.belongsTo(Company, { foreignKey: 'companyId', as: 'company' });
-  Company.hasMany(Expense, { foreignKey: 'companyId', as: 'expenses' });
+    // User and Expense (Employee)
+    User.hasMany(Expense, {
+      foreignKey: 'employeeId',
+      as: 'submittedExpenses',
+      onDelete: 'CASCADE'
+    });
+    Expense.belongsTo(User, {
+      foreignKey: 'employeeId',
+      as: 'expenseEmployee',
+      onDelete: 'CASCADE'
+    });
 
-  // Expense and Approver (User)
-  Expense.belongsTo(User, {
-    foreignKey: 'currentApproverId',
-    as: 'currentApprover'
-  });
+    // Expense and Company
+    Expense.belongsTo(Company, {
+      foreignKey: 'companyId',
+      as: 'expenseCompany',
+      onDelete: 'CASCADE'
+    });
+    Company.hasMany(Expense, {
+      foreignKey: 'companyId',
+      as: 'companyExpenses',
+      onDelete: 'CASCADE'
+    });
 
-  // Expense and Approval History
-  Expense.hasMany(ApprovalHistory, {
-    foreignKey: 'expenseId',
-    as: 'approvalHistories'
-  });
-  ApprovalHistory.belongsTo(Expense, {
-    foreignKey: 'expenseId',
-    as: 'expense'
-  });
+    // Expense and Current Approver
+    Expense.belongsTo(User, {
+      foreignKey: 'currentApproverId',
+      as: 'currentApproverUser',
+      onDelete: 'SET NULL'
+    });
 
-  // Approval History and User (Approver)
-  ApprovalHistory.belongsTo(User, {
-    foreignKey: 'approverId',
-    as: 'approver'
-  });
-  User.hasMany(ApprovalHistory, {
-    foreignKey: 'approverId',
-    as: 'approvalHistories'
-  });
+    // Expense and Approval History
+    Expense.hasMany(ApprovalHistory, {
+      foreignKey: 'expenseId',
+      as: 'expenseApprovalHistories',
+      onDelete: 'CASCADE'
+    });
+    ApprovalHistory.belongsTo(Expense, {
+      foreignKey: 'expenseId',
+      as: 'approvalHistoryExpense',
+      onDelete: 'CASCADE'
+    });
 
-  // User self-referential for manager
-  User.belongsTo(User, {
-    foreignKey: 'managerId',
-    as: 'manager'
-  });
-  User.hasMany(User, {
-    foreignKey: 'managerId',
-    as: 'teamMembers'
-  });
+    // Approval History and Approver
+    ApprovalHistory.belongsTo(User, {
+      foreignKey: 'approverId',
+      as: 'approvalHistoryUser',
+      onDelete: 'CASCADE'
+    });
 
-  // ApprovalFlow and Company
-  ApprovalFlow.belongsTo(Company, {
-    foreignKey: 'companyId',
-    as: 'company'
-  });
-  Company.hasMany(ApprovalFlow, {
-    foreignKey: 'companyId',
-    as: 'approvalFlows'
-  });
+    // User self-referential for manager
+    User.belongsTo(User, {
+      foreignKey: 'managerId',
+      as: 'userManager',
+      onDelete: 'SET NULL'
+    });
 
-  // ApprovalRule and Company
-  ApprovalRule.belongsTo(Company, {
-    foreignKey: 'companyId',
-    as: 'company'
-  });
-  Company.hasMany(ApprovalRule, {
-    foreignKey: 'companyId',
-    as: 'approvalRules'
-  });
+    // ApprovalFlow and Company
+    ApprovalFlow.belongsTo(Company, {
+      foreignKey: 'companyId',
+      as: 'approvalFlowCompany',
+      onDelete: 'CASCADE'
+    });
+    Company.hasMany(ApprovalFlow, {
+      foreignKey: 'companyId',
+      as: 'companyApprovalFlows',
+      onDelete: 'CASCADE'
+    });
 
-  // ApprovalRule and ApprovalFlow
-  ApprovalRule.belongsTo(ApprovalFlow, {
-    foreignKey: 'approvalFlowId',
-    as: 'approvalFlow'
-  });
-  ApprovalFlow.hasMany(ApprovalRule, {
-    foreignKey: 'approvalFlowId',
-    as: 'approvalRules'
-  });
+    // ApprovalRule and Company
+    ApprovalRule.belongsTo(Company, {
+      foreignKey: 'companyId',
+      as: 'approvalRuleCompany',
+      onDelete: 'CASCADE'
+    });
+
+    // ApprovalRule and ApprovalFlow
+    ApprovalRule.belongsTo(ApprovalFlow, {
+      foreignKey: 'approvalFlowId',
+      as: 'ruleApprovalFlow',
+      onDelete: 'CASCADE'
+    });
+
+    // ApprovalRule and Specific Approver
+    ApprovalRule.belongsTo(User, {
+      foreignKey: 'specificApproverId',
+      as: 'ruleSpecificApprover',
+      onDelete: 'CASCADE'
+    });
+
+    console.log('✅ Database associations setup successfully');
+  } catch (error) {
+    console.error('❌ Error setting up associations:', error);
+    throw error;
+  }
 };
 
 const models = {

@@ -20,8 +20,7 @@ router.get('/', authenticate, authorize('admin', 'manager'), async (req, res) =>
       attributes: { exclude: ['password'] },
       include: [
         {
-          model: User,
-          as: 'Manager',
+          association: 'userManager',
           attributes: ['id', 'name', 'email'],
           required: false,
         },
@@ -38,12 +37,19 @@ router.get('/', authenticate, authorize('admin', 'manager'), async (req, res) =>
 // Create user (Admin only)
 router.post('/', authenticate, authorize('admin'), async (req, res) => {
   try {
-    const { email, password, name, role, managerId, isManagerApprover = true } = req.body;
+    const { email, password, name, role, managerId, isManagerApprover = false } = req.body;
 
     // Validate required fields
     if (!email || !password || !name || !role) {
       return res.status(400).json({
         message: 'Missing required fields: email, password, name, role'
+      });
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      return res.status(400).json({
+        message: 'Password must be at least 6 characters long'
       });
     }
 
@@ -56,13 +62,9 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
       return res.status(400).json({ message: 'User with this email already exists' });
     }
 
-    // Hash password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
     const user = await User.create({
       email,
-      password: hashedPassword,
+      password,
       name,
       role,
       managerId: managerId || null,
@@ -75,8 +77,7 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
       attributes: { exclude: ['password'] },
       include: [
         {
-          model: User,
-          as: 'Manager',
+          association: 'userManager',
           attributes: ['id', 'name', 'email'],
           required: false,
         },
@@ -106,15 +107,26 @@ router.put('/:id', authenticate, authorize('admin'), async (req, res) => {
     const updateData = {
       name: name || user.name,
       role: role || user.role,
-      managerId: managerId || null,
-      isManagerApprover: role === 'manager' ? (isManagerApprover !== undefined ? isManagerApprover : user.isManagerApprover) : false,
+      managerId: managerId !== undefined ? managerId : user.managerId,
       isActive: isActive !== undefined ? isActive : user.isActive,
     };
 
+    // Only managers can be manager approvers
+    if (role === 'manager' || user.role === 'manager') {
+      updateData.isManagerApprover = isManagerApprover !== undefined ? isManagerApprover : user.isManagerApprover;
+    } else {
+      updateData.isManagerApprover = false;
+    }
+
     // Only update password if provided
     if (password && password.trim() !== '') {
-      const saltRounds = 10;
-      updateData.password = await bcrypt.hash(password, saltRounds);
+      // Validate password length
+      if (password.length < 6) {
+        return res.status(400).json({
+          message: 'Password must be at least 6 characters long'
+        });
+      }
+      updateData.password = password;
     }
 
     await user.update(updateData);
@@ -123,8 +135,7 @@ router.put('/:id', authenticate, authorize('admin'), async (req, res) => {
       attributes: { exclude: ['password'] },
       include: [
         {
-          model: User,
-          as: 'Manager',
+          association: 'userManager',
           attributes: ['id', 'name', 'email'],
           required: false,
         },

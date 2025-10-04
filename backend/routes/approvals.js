@@ -1,10 +1,11 @@
 import express from 'express';
 import { authenticate, authorize } from '../middleware/auth.js';
-import User from '../models/index.js';
 import { Op } from 'sequelize';
-import ApprovalHistory from '../models/ApprovalHistory.js';
-import ApprovalRule from '../models/ApprovalRule.js';
 import Expense from '../models/Expense.js';
+import User from '../models/User.js';
+import ApprovalHistory from '../models/ApprovalHistory.js';
+import ApprovalFlow from '../models/ApprovalFlow.js';
+import ApprovalRule from '../models/ApprovalRule.js';
 
 const router = express.Router();
 
@@ -14,6 +15,10 @@ router.post('/:expenseId/action', authenticate, authorize('manager', 'admin'), a
     const { action, comments } = req.body;
     const { expenseId } = req.params;
 
+    if (!['approved', 'rejected'].includes(action)) {
+      return res.status(400).json({ message: 'Invalid action. Must be "approved" or "rejected".' });
+    }
+
     const expense = await Expense.findOne({
       where: {
         id: expenseId,
@@ -22,8 +27,7 @@ router.post('/:expenseId/action', authenticate, authorize('manager', 'admin'), a
       },
       include: [
         {
-          model: User,
-          as: 'Employee',
+          association: 'expenseEmployee',
         },
       ],
     });
@@ -53,6 +57,7 @@ router.post('/:expenseId/action', authenticate, authorize('manager', 'admin'), a
 
     res.json({ message: 'Expense approved successfully' });
   } catch (error) {
+    console.error('Error in approval action:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -62,6 +67,10 @@ router.post('/:expenseId/override', authenticate, authorize('admin'), async (req
   try {
     const { action, comments } = req.body;
     const { expenseId } = req.params;
+
+    if (!['approved', 'rejected'].includes(action)) {
+      return res.status(400).json({ message: 'Invalid action. Must be "approved" or "rejected".' });
+    }
 
     const expense = await Expense.findByPk(expenseId);
     if (!expense) {
@@ -83,6 +92,7 @@ router.post('/:expenseId/override', authenticate, authorize('admin'), async (req
 
     res.json({ message: `Expense ${action} by admin override` });
   } catch (error) {
+    console.error('Error in admin override:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

@@ -17,9 +17,14 @@ export const authenticate = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
 
-    // Look for userId in the decoded token
     const user = await User.findByPk(decoded.userId, {
       attributes: { exclude: ['password'] },
+      include: [
+        {
+          association: 'userCompany',
+          attributes: ['id', 'name', 'currency', 'country']
+        }
+      ]
     });
 
     if (!user || !user.isActive) {
@@ -42,6 +47,10 @@ export const authenticate = async (req, res, next) => {
 
 export const authorize = (...roles) => {
   return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required.' });
+    }
+
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         message: 'Access denied. Insufficient permissions.'

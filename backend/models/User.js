@@ -1,25 +1,34 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
-import Company from './Company.js'; // Import Company model
+import bcrypt from 'bcryptjs';
 
 const User = sequelize.define('User', {
   id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
     primaryKey: true,
-    autoIncrement: true,
   },
   name: {
     type: DataTypes.STRING,
     allowNull: false,
+    validate: {
+      notEmpty: true,
+    },
   },
   email: {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
+    validate: {
+      isEmail: true,
+    },
   },
   password: {
     type: DataTypes.STRING,
     allowNull: false,
+    validate: {
+      len: [6, 255],
+    },
   },
   role: {
     type: DataTypes.ENUM('employee', 'manager', 'admin'),
@@ -27,24 +36,28 @@ const User = sequelize.define('User', {
     defaultValue: 'employee',
   },
   managerId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: true,
     references: {
       model: 'Users',
       key: 'id',
     },
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
   },
   isManagerApprover: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
   },
   companyId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: false,
     references: {
-      model: 'companies',
+      model: 'Companies',
       key: 'id',
     },
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
   },
   isActive: {
     type: DataTypes.BOOLEAN,
@@ -53,26 +66,30 @@ const User = sequelize.define('User', {
 }, {
   tableName: 'users',
   timestamps: true,
+  hooks: {
+    beforeCreate: async (user) => {
+      if (user.password) {
+        const saltRounds = 10;
+        user.password = await bcrypt.hash(user.password, saltRounds);
+      }
+    },
+    beforeUpdate: async (user) => {
+      if (user.changed('password')) {
+        const saltRounds = 10;
+        user.password = await bcrypt.hash(user.password, saltRounds);
+      }
+    }
+  }
 });
 
-// Define associations
-User.associate = function(models) {
-  User.belongsTo(models.Company, {
-    foreignKey: 'companyId',
-    as: 'company',
-    onDelete: 'CASCADE',
-  });
-  
-  User.belongsTo(User, {
-    as: 'Manager',
-    foreignKey: 'managerId',
-    onDelete: 'SET NULL',
-  });
-  
-  User.hasMany(User, {
-    as: 'TeamMembers',
-    foreignKey: 'managerId',
-  });
+// Instance method to validate password
+User.prototype.validatePassword = async function (password) {
+  try {
+    return await bcrypt.compare(password, this.password);
+  } catch (error) {
+    console.error('Password validation error:', error);
+    return false;
+  }
 };
 
 export default User;

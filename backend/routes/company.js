@@ -1,10 +1,11 @@
 import express from 'express';
 import { authenticate, authorize } from '../middleware/auth.js';
-// import { Company, ApprovalFlow, ApprovalRule, User, Expense } from '../models/index.js';
 import { Op } from 'sequelize';
 import Company from '../models/Company.js';
+import User from '../models/User.js';
 import Expense from '../models/Expense.js';
 import ApprovalFlow from '../models/ApprovalFlow.js';
+import ApprovalRule from '../models/ApprovalRule.js';
 
 const router = express.Router();
 
@@ -19,6 +20,7 @@ router.get('/', authenticate, async (req, res) => {
 
     res.json(company);
   } catch (error) {
+    console.error('Error fetching company:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -42,6 +44,7 @@ router.put('/', authenticate, authorize('admin'), async (req, res) => {
 
     res.json({ message: 'Company updated successfully', company });
   } catch (error) {
+    console.error('Error updating company:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -99,6 +102,7 @@ router.get('/stats', authenticate, authorize('admin'), async (req, res) => {
       totalExpenseAmount: totalExpenseAmount || 0,
     });
   } catch (error) {
+    console.error('Error fetching company stats:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -108,17 +112,12 @@ router.get('/approval-flows', authenticate, authorize('admin'), async (req, res)
   try {
     const approvalFlows = await ApprovalFlow.findAll({
       where: { companyId: req.user.companyId },
-      include: [
-        {
-          model: User,
-          attributes: ['id', 'name', 'email'],
-        },
-      ],
       order: [['minAmount', 'ASC']],
     });
 
     res.json(approvalFlows);
   } catch (error) {
+    console.error('Error fetching approval flows:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -158,17 +157,9 @@ router.post('/approval-flows', authenticate, authorize('admin'), async (req, res
       companyId: req.user.companyId,
     });
 
-    const approvalFlowWithDetails = await ApprovalFlow.findByPk(approvalFlow.id, {
-      include: [
-        {
-          model: User,
-          attributes: ['id', 'name', 'email'],
-        },
-      ],
-    });
-
-    res.status(201).json(approvalFlowWithDetails);
+    res.status(201).json(approvalFlow);
   } catch (error) {
+    console.error('Error creating approval flow:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -220,17 +211,9 @@ router.put('/approval-flows/:flowId', authenticate, authorize('admin'), async (r
       isActive: isActive !== undefined ? isActive : approvalFlow.isActive,
     });
 
-    const updatedFlow = await ApprovalFlow.findByPk(approvalFlow.id, {
-      include: [
-        {
-          model: User,
-          attributes: ['id', 'name', 'email'],
-        },
-      ],
-    });
-
-    res.json(updatedFlow);
+    res.json(approvalFlow);
   } catch (error) {
+    console.error('Error updating approval flow:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -255,6 +238,7 @@ router.delete('/approval-flows/:flowId', authenticate, authorize('admin'), async
 
     res.json({ message: 'Approval flow deleted successfully' });
   } catch (error) {
+    console.error('Error deleting approval flow:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -266,8 +250,7 @@ router.get('/approval-rules', authenticate, authorize('admin'), async (req, res)
       where: { companyId: req.user.companyId },
       include: [
         {
-          model: User,
-          as: 'SpecificApprover',
+          association: 'ruleSpecificApprover',
           attributes: ['id', 'name', 'email'],
         },
       ],
@@ -276,6 +259,7 @@ router.get('/approval-rules', authenticate, authorize('admin'), async (req, res)
 
     res.json(approvalRules);
   } catch (error) {
+    console.error('Error fetching approval rules:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -336,8 +320,7 @@ router.post('/approval-rules', authenticate, authorize('admin'), async (req, res
     const ruleWithDetails = await ApprovalRule.findByPk(approvalRule.id, {
       include: [
         {
-          model: User,
-          as: 'SpecificApprover',
+          association: 'ruleSpecificApprover',
           attributes: ['id', 'name', 'email'],
         },
       ],
@@ -345,6 +328,7 @@ router.post('/approval-rules', authenticate, authorize('admin'), async (req, res
 
     res.status(201).json(ruleWithDetails);
   } catch (error) {
+    console.error('Error creating approval rule:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -418,8 +402,7 @@ router.put('/approval-rules/:ruleId', authenticate, authorize('admin'), async (r
     const updatedRule = await ApprovalRule.findByPk(approvalRule.id, {
       include: [
         {
-          model: User,
-          as: 'SpecificApprover',
+          association: 'ruleSpecificApprover',
           attributes: ['id', 'name', 'email'],
         },
       ],
@@ -427,6 +410,7 @@ router.put('/approval-rules/:ruleId', authenticate, authorize('admin'), async (r
 
     res.json(updatedRule);
   } catch (error) {
+    console.error('Error updating approval rule:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -451,6 +435,7 @@ router.delete('/approval-rules/:ruleId', authenticate, authorize('admin'), async
 
     res.json({ message: 'Approval rule deleted successfully' });
   } catch (error) {
+    console.error('Error deleting approval rule:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -470,6 +455,7 @@ router.get('/approvers', authenticate, authorize('admin'), async (req, res) => {
 
     res.json(approvers);
   } catch (error) {
+    console.error('Error fetching approvers:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -500,6 +486,7 @@ router.get('/categories', authenticate, async (req, res) => {
 
     res.json(allCategories);
   } catch (error) {
+    console.error('Error fetching categories:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -519,6 +506,7 @@ router.get('/currencies', authenticate, async (req, res) => {
 
     res.json(currencies);
   } catch (error) {
+    console.error('Error fetching currencies:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

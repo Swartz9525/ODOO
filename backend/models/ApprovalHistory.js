@@ -35,13 +35,10 @@ const ApprovalHistory = sequelize.define('ApprovalHistory', {
     },
   },
 }, {
+  tableName: 'approval_histories',
+  // Remove indexes to prevent conflicts during sync
   indexes: [
-    {
-      fields: ['expenseId'],
-    },
-    {
-      fields: ['approverId'],
-    },
+    // Let Sequelize handle indexes automatically
   ],
 });
 
